@@ -2,15 +2,12 @@
 """This module defines a base class for all models in our hbnb clone"""
 import uuid
 from datetime import datetime
-from sqlalchemy.orm import declarative_base
-from sqlalchemy import Column, Integer, DateTime
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy import Integer, DateTime, String
 
-Base = declarative_base()
+
 class BaseModel:
     """A base class for all hbnb models"""
-    id = Column(Integer,primary_key=True, nullable=False)
-    created_at=Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False) 
     def __init__(self, *args, **kwargs):
         """Instatntiates a new model"""
         if not kwargs:
@@ -18,7 +15,7 @@ class BaseModel:
             self.id = str(uuid.uuid4())
             self.created_at = datetime.now()
             self.updated_at = datetime.now()
-            
+            storage.new(self)
        
         else:
             for key, value in kwargs.items():
@@ -30,7 +27,8 @@ class BaseModel:
 
                 elif key == "updated_at":
                     format = '%Y-%m-%dT%H:%M:%S.%f'
-                    value = datetime.strptime(value, format) 
+                    value = datetime.strptime(value, format)
+
                 setattr(self, key, value)
             
 
@@ -43,7 +41,6 @@ class BaseModel:
         """Updates updated_at with current time when instance is changed"""
         from models import storage
         self.updated_at = datetime.now()
-        storage.new(self)
         storage.save()
 
     def to_dict(self):
@@ -55,17 +52,15 @@ class BaseModel:
                 new_dict[key] = self.created_at.isoformat()
             elif key == "created_at":
                 new_dict[key] = self.updated_at.isoformat()
-            if key == "_sa_instance_state":
-                del new_dict[key]
             else:
                 new_dict[key] = value
         if "__class__" not in self.__dict__.keys():
             new_dict["__class__"] = self.__class__.__name__
 
         return new_dict
-    
-    def delete(self):
-        from models import storage
-        storage.delete(self)
 
-
+    def to_update(self, args):
+        for para in args:
+            key, value = para.split("=")
+            value = value.replace('"', '/"')
+            setattr(self, key, value)
